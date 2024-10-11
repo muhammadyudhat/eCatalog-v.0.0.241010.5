@@ -15,7 +15,11 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // atau alamat frontend aplikasi Anda
+  credentials: true,
+}));
 app.use(express.json());
 
 // User login

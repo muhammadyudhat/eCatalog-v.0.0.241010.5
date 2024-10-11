@@ -5,19 +5,45 @@ const Login = ({ onLogin }) => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    // This is a mock login. In a real application, you would validate credentials against a backend.
-    if (username === 'admin' && password === 'admin') {
-      onLogin({ username: 'admin', role: 'admin' })
-    } else if (username === 'manager' && password === 'manager') {
-      onLogin({ username: 'manager', role: 'manager' })
-    } else if (username === 'user' && password === 'user') {
-      onLogin({ username: 'user', role: 'user' })
-    } else {
-      setError('Invalid username or password')
+  // const handleSubmit = (e) => {
+  //   e.preventDefault()
+  //   // This is a mock login. In a real application, you would validate credentials against a backend.
+  //   if (username === 'admin' && password === 'admin') {
+  //     onLogin({ username: 'admin', role: 'admin' })
+  //   } else if (username === 'manager' && password === 'manager') {
+  //     onLogin({ username: 'manager', role: 'manager' })
+  //   } else if (username === 'user' && password === 'user') {
+  //     onLogin({ username: 'user', role: 'user' })
+  //   } else {
+  //     setError('Invalid username or password')
+  //   }
+  // }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:3001/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: username, password }),
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        onLogin(data.user); // Pass the user object returned from the backend
+        // You can also save the token in localStorage if needed
+        localStorage.setItem('token', data.token);
+      } else {
+        setError(data.message || 'Invalid email or password');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('An error occurred during login');
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">

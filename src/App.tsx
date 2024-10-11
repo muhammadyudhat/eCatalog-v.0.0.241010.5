@@ -14,6 +14,36 @@ import Register from './components/Register'
 import Dashboard from './components/Dashboard'
 
 // ... (keep the existing type definitions)
+// Define types
+type Product = {
+  id: number
+  name: string
+  price: number
+  category: string
+  subCategory: string
+  sku: string
+  description: string
+  image: string
+  disabled: boolean
+}
+
+type User = {
+  id: number
+  username: string
+  email: string
+  role: 'admin' | 'manager' | 'user'
+}
+
+type Feature = {
+  id: number
+  name: string
+  description: string
+  permissions: {
+    admin: boolean
+    manager: boolean
+    user: boolean
+  }
+}
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -55,16 +85,183 @@ function App() {
   }, []);
 
   // ... (keep the existing fetch functions and handlers)
+  //D:\@Coding\bolt\eCatalog-v.0.0.24810.1\src\App.tsx
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/products');
+      if (response.ok) {
+        const data = await response.json();
+        setProducts(data);
+      } else {
+        console.error('Failed to fetch products');
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+        
+        // Fetch sub-categories for each category
+        const subCategoriesPromises = data.map(async (category: string) => {
+          const subResponse = await fetch(`http://localhost:3001/api/categories/${category}/subcategories`);
+          if (subResponse.ok) {
+            const subData = await subResponse.json();
+            return { [category]: subData };
+          }
+          return { [category]: [] };
+        });
+
+        const subCategoriesResults = await Promise.all(subCategoriesPromises);
+        const newCategorySubCategories = Object.assign({}, ...subCategoriesResults);
+        setCategorySubCategories(newCategorySubCategories);
+      } else {
+        console.error('Failed to fetch categories');
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+  };
+
+  const handleToggleFavorite = (productId: number) => {
+    setFavorites(prevFavorites => 
+      prevFavorites.includes(productId)
+        ? prevFavorites.filter(id => id !== productId)
+        : [...prevFavorites, productId]
+    );
+  };
+
+  const handleAddProduct = async (product: Omit<Product, 'id' | 'disabled'>) => {
+    try {
+      const response = await fetch('http://localhost:3001/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(product),
+      });
+
+      if (response.ok) {
+        const newProduct = await response.json();
+        setProducts([...products, newProduct]);
+      } else {
+        console.error('Failed to add product');
+      }
+    } catch (error) {
+      console.error('Error adding product:', error);
+    }
+  };
+
+  const handleEditProduct = async (updatedProduct: Product) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/products/${updatedProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedProduct),
+      });
+
+      if (response.ok) {
+        const editedProduct = await response.json();
+        setProducts(products.map(p => p.id === editedProduct.id ? editedProduct : p));
+      } else {
+        console.error('Failed to update product');
+      }
+    } catch (error) {
+      console.error('Error updating product:', error);
+    }
+  };
+
+  const handleToggleProductStatus = async (productId: number) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/products/${productId}/toggle`, {
+        method: 'PATCH',
+      });
+
+      if (response.ok) {
+        const updatedProduct = await response.json();
+        setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+      } else {
+        console.error('Failed to toggle product status');
+      }
+    } catch (error) {
+      console.error('Error toggling product status:', error);
+    }
+  };
+
+  const handleAddCategory = (category: string) => {
+    if (!categories.includes(category)) {
+      setCategories([...categories, category]);
+      setCategorySubCategories({...categorySubCategories, [category]: []});
+    }
+  };
+
+  const handleAddSubCategory = async (category: string, subCategory: string) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/categories/${category}/subcategories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ subCategory }),
+      });
+
+      if (response.ok) {
+        setCategorySubCategories(prev => ({
+          ...prev,
+          [category]: [...(prev[category] || []), subCategory]
+        }));
+      } else {
+        console.error('Failed to add sub-category');
+      }
+    } catch (error) {
+      console.error('Error adding sub-category:', error);
+    }
+  };
+
+  const handleAddUser = (user: Omit<User, 'id'>) => {
+    const newUser = {
+      ...user,
+      id: users.length + 1
+    };
+    setUsers([...users, newUser]);
+  };
+
+  const handleEditUser = (updatedUser: User) => {
+    setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+
+  const handleDeleteUser = (userId: number) => {
+    setUsers(users.filter(u => u.id !== userId));
+  };
+
+  const handleUpdateFeature = (updatedFeature: Feature) => {
+    setFeatures(features.map(f => f.id === updatedFeature.id ? updatedFeature : f));
+  };
 
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
-        <Header isAuthenticated={isAuthenticated} onLogout={() => {
+        {/* <Header isAuthenticated={isAuthenticated} onLogout={() => {
           setIsAuthenticated(false);
           setCurrentUser(null);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-        }} />
+        }} /> */}
+        <Header isAuthenticated={isAuthenticated} onLogout={handleLogout} />
         <div className="pt-16">
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -91,6 +288,27 @@ function App() {
                 )
               }
             />
+            <Route path="/add-category" element={
+              isAuthenticated ? (
+                <AddCategory
+                  categories={categories}
+                  onAddCategory={handleAddCategory}
+                />
+              ) : (
+                <Navigate to="/login" />
+              )
+            } />
+            <Route path="/favorites" element={
+              isAuthenticated ? (
+                <FavoriteProducts
+                  products={products.filter(p => !p.disabled)}
+                  favorites={favorites}
+                  toggleFavorite={handleToggleFavorite}
+                />
+              ) : (
+                <Navigate to="/login" />
+              )
+            } />
             <Route
               path="/user-management"
               element={
